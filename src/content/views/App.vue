@@ -35,7 +35,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import {  onMounted, onUnmounted, ref } from 'vue'
 import PathConverter from '@/components/PathConverter.vue'
 
 const isPanelOpen = ref(false)
@@ -47,6 +47,35 @@ function togglePanel(): void {
 function closePanel(): void {
   isPanelOpen.value = false
 }
+interface FastToolsMessage {
+  action?: string
+  type?: string
+}
+
+// 定义处理消息的函数
+const handleMessage = (
+  message: FastToolsMessage,
+  sender: chrome.runtime.MessageSender,
+  sendResponse: (response?: unknown) => void,
+) => {
+  console.log('[FastTools] received message:', message, sender)
+
+  if (message.action === 'toggle_panel' || message.type === 'open_panel') {
+    togglePanel()
+    // 可选：发送响应给 background
+    sendResponse({ status: 'toggled', isOpen: isPanelOpen.value })
+  }
+}
+
+onMounted(() => {
+  // 添加监听器
+  chrome.runtime.onMessage.addListener(handleMessage)
+})
+
+onUnmounted(() => {
+  // 移除监听器，防止内存泄漏（虽然 content script 通常随页面销毁，但好习惯很重要）
+  chrome.runtime.onMessage.removeListener(handleMessage)
+})
 </script>
 
 <style scoped>
@@ -63,7 +92,7 @@ function closePanel(): void {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 54px;
+  width: 62px;
   height: 70px;
   padding: 0;
   cursor: pointer;
@@ -73,21 +102,17 @@ function closePanel(): void {
   box-shadow: 0 14px 32px rgb(18 47 88 / 26%);
   transform: translateY(-50%);
   transition:
-    transform 0.2s ease,
     box-shadow 0.18s ease,
-    background 0.18s ease,
-    width 0.18s ease;
+    background 0.18s ease;
 }
 
 .fast-tools-sprite:hover {
-  width: 62px;
   background: linear-gradient(160deg, #ffffff 0%, #cfe7ff 100%);
   box-shadow: 0 18px 38px rgb(18 47 88 / 34%);
-  transform: translateY(-50%) translateX(-4px) rotate(-2deg);
 }
 
 .fast-tools-sprite:active {
-  transform: translateY(-50%) translateX(-2px) scale(0.98);
+  transform: translateY(-50%) scale(0.98);
 }
 
 .fast-tools-sprite__face {

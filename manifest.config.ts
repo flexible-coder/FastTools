@@ -36,15 +36,8 @@ export default defineManifest({
     type: 'module',
   },
    commands: {
-    _execute_action: {
-      suggested_key: {
-        default: 'Ctrl+Shift+Y',
-        mac: 'Command+Shift+Y',
-      },
-      description: '打开插件弹窗或侧边栏',
-    },
     // 你可以添加自定义命令，例如：
-    toggle_feature: {
+    open_panel: {
       suggested_key: {
         default: 'Ctrl+Shift+Z',
         mac: 'Command+Shift+Z',

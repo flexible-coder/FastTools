@@ -1,15 +1,21 @@
-// src/background/index.ts
-
 chrome.commands.onCommand.addListener((command) => {
-  console.log('command==',command);
-  
-  if (command === 'toggle_feature') {
-    // 获取当前活跃标签页
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0] && tabs[0].id) {
-        // 向内容脚本发送消息
-        chrome.tabs.sendMessage(tabs[0].id, { type: 'TOGGLE_FEATURE' });
-      }
-    });
+  if (command !== 'open_panel') {
+    return
   }
-});
+
+  chrome.tabs.query({ active: true, currentWindow: true }, ([activeTab]) => {
+    if (!activeTab?.id) {
+      return
+    }
+
+    chrome.tabs.sendMessage(
+      activeTab.id,
+      { action: 'open_panel' },
+      () => {
+        if (chrome.runtime.lastError) {
+          console.warn('[FastTools] sendMessage failed:', chrome.runtime.lastError.message)
+        }
+      },
+    )
+  })
+})
