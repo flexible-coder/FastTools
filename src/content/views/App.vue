@@ -7,11 +7,16 @@
       aria-label="打开 FastTools 工具面板"
       @click="togglePanel"
     >
-      <span class="fast-tools-sprite__face" aria-hidden="true">
-        <span class="fast-tools-sprite__eye"></span>
-        <span class="fast-tools-sprite__eye"></span>
+      <span class="fast-tools-sprite__halo" aria-hidden="true"></span>
+      <span class="fast-tools-sprite__bot" aria-hidden="true">
+        <span class="fast-tools-sprite__antenna"></span>
+        <span class="fast-tools-sprite__screen">
+          <span class="fast-tools-sprite__eye"></span>
+          <span class="fast-tools-sprite__eye"></span>
+          <span class="fast-tools-sprite__mouth"></span>
+        </span>
       </span>
-      <span class="fast-tools-sprite__spark" aria-hidden="true"></span>
+      <span class="fast-tools-sprite__shadow" aria-hidden="true"></span>
     </button>
 
     <Transition name="fast-tools-panel-slide">
@@ -115,75 +120,106 @@ onUnmounted(() => {
   transform: translateY(-50%) scale(0.98);
 }
 
-.fast-tools-sprite__face {
-  position: relative;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  background: linear-gradient(180deg, #1677ff 0%, #145bd7 100%);
-  border-radius: 50% 50% 46% 46%;
-  box-shadow:
-    inset 0 -4px 8px rgb(8 40 116 / 20%),
-    0 8px 16px rgb(22 119 255 / 24%);
-  transition: transform 0.22s ease;
-}
-
-.fast-tools-sprite:hover .fast-tools-sprite__face {
-  transform: translateY(-3px);
-  animation: fast-tools-sprite-bob 0.7s ease-in-out infinite alternate;
-}
-
-.fast-tools-sprite__face::before,
-.fast-tools-sprite__face::after {
+.fast-tools-sprite__halo {
   position: absolute;
-  top: -7px;
-  width: 7px;
-  height: 12px;
-  content: "";
+  width: 48px;
+  height: 48px;
+  background:
+    radial-gradient(circle at 34% 24%, rgb(255 255 255 / 90%) 0 9%, transparent 10%),
+    radial-gradient(circle, rgb(87 181 255 / 28%) 0 48%, transparent 50%);
+  border-radius: 50%;
+  animation: fast-tools-sprite-pulse 1.8s ease-in-out infinite;
+}
+
+.fast-tools-sprite__bot {
+  position: relative;
+  display: block;
+  width: 36px;
+  height: 38px;
+  background: linear-gradient(180deg, #eff8ff 0%, #94d4ff 100%);
+  border: 2px solid #ffffff;
+  border-radius: 14px 14px 13px 13px;
+  box-shadow:
+    inset 0 -5px 10px rgb(15 91 166 / 18%),
+    0 9px 16px rgb(22 119 255 / 25%);
+  animation: fast-tools-sprite-float 1.7s ease-in-out infinite;
+}
+
+.fast-tools-sprite__antenna {
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  width: 3px;
+  height: 10px;
   background: #1677ff;
   border-radius: 999px;
+  transform: translateX(-50%);
 }
 
-.fast-tools-sprite__face::before {
-  left: 7px;
-  transform: rotate(-24deg);
+.fast-tools-sprite__antenna::after {
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  content: "";
+  background: #ffc53d;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgb(255 197 61 / 70%);
+  transform: translateX(-50%);
 }
 
-.fast-tools-sprite__face::after {
-  right: 7px;
-  transform: rotate(24deg);
+.fast-tools-sprite__screen {
+  position: absolute;
+  top: 9px;
+  left: 50%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px 7px;
+  justify-items: center;
+  width: 25px;
+  height: 18px;
+  padding: 4px 5px 3px;
+  background: linear-gradient(180deg, #1464e8 0%, #0e3c9c 100%);
+  border-radius: 9px;
+  transform: translateX(-50%);
 }
 
 .fast-tools-sprite__eye {
-  width: 5px;
-  height: 8px;
-  background: #ffffff;
+  width: 4px;
+  height: 6px;
+  background: #8ff7ff;
   border-radius: 999px;
-  box-shadow: 0 0 0 1px rgb(255 255 255 / 18%);
+  box-shadow: 0 0 7px rgb(143 247 255 / 85%);
+  animation: fast-tools-sprite-blink 3s ease-in-out infinite;
 }
 
-.fast-tools-sprite__spark {
+.fast-tools-sprite__mouth {
+  grid-column: 1 / -1;
+  width: 11px;
+  height: 4px;
+  border-bottom: 2px solid #8ff7ff;
+  border-radius: 0 0 999px 999px;
+}
+
+.fast-tools-sprite__shadow {
   position: absolute;
-  top: 13px;
-  left: 10px;
-  width: 7px;
+  bottom: 13px;
+  width: 28px;
   height: 7px;
-  pointer-events: none;
-  background: #ffc53d;
+  background: rgb(36 72 120 / 16%);
   border-radius: 50%;
-  opacity: 0;
-  transform: scale(0.4);
-  transition:
-    opacity 0.2s ease,
-    transform 0.2s ease;
+  filter: blur(1px);
+  animation: fast-tools-sprite-shadow 1.7s ease-in-out infinite;
 }
 
-.fast-tools-sprite:hover .fast-tools-sprite__spark {
-  opacity: 1;
-  transform: scale(1) translateY(-3px);
+.fast-tools-sprite:hover .fast-tools-sprite__bot {
+  animation-duration: 0.9s;
+}
+
+.fast-tools-sprite:hover .fast-tools-sprite__halo {
+  animation-duration: 1s;
 }
 
 .fast-tools-panel {
@@ -252,6 +288,55 @@ onUnmounted(() => {
 
   to {
     transform: translateY(1px) rotate(2deg);
+  }
+}
+
+@keyframes fast-tools-sprite-float {
+  0%,
+  100% {
+    transform: translateY(-3px) rotate(-2deg);
+  }
+
+  50% {
+    transform: translateY(2px) rotate(2deg);
+  }
+}
+
+@keyframes fast-tools-sprite-shadow {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scaleX(0.82);
+  }
+
+  50% {
+    opacity: 0.9;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes fast-tools-sprite-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.9);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes fast-tools-sprite-blink {
+  0%,
+  88%,
+  100% {
+    transform: scaleY(1);
+  }
+
+  92% {
+    transform: scaleY(0.12);
   }
 }
 </style>
