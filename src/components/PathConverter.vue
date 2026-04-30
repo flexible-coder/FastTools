@@ -1,44 +1,28 @@
 <template>
   <a-card class="fast-tools-path-converter" :bordered="false" size="small">
     <template #title>
-      <div class="fast-tools-path-converter__title">
-        Windows 路径转换工具
-      </div>
+      <div class="fast-tools-path-converter__title">Windows 路径转换工具</div>
     </template>
 
-    <a-space
-      class="fast-tools-path-converter__body"
-      direction="vertical"
-      :size="12"
-    >
+    <a-space class="fast-tools-path-converter__body" direction="vertical" :size="12">
       <a-textarea
+        ref="inputRef"
         v-model:value="inputValue"
         class="fast-tools-path-converter__textarea"
         placeholder="请输入 Windows 路径，例如：src\content\views\App.vue"
         :auto-size="{ minRows: 2, maxRows: 8 }"
+        autofocus
         @keydown.enter.exact.prevent="handleConvertAndCopy"
       />
 
       <a-space wrap>
-        <a-button type="primary" @click="handleConvert">
-          转换
-        </a-button>
-        <a-button @click="handleClear">
-          清空
-        </a-button>
+        <a-button type="primary" @click="handleConvert"> 转换 </a-button>
+        <a-button @click="handleClear"> 清空 </a-button>
       </a-space>
 
       <div class="fast-tools-path-converter__output-head">
         <span>转换结果</span>
-        <a-button
-          type="primary"
-          ghost
-          size="small"
-          :disabled="!outputValue"
-          @click="handleCopy()"
-        >
-          复制
-        </a-button>
+        <a-button type="primary" ghost size="small" :disabled="!outputValue" @click="handleCopy()"> 复制 </a-button>
       </div>
 
       <a-textarea
@@ -53,55 +37,65 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { message } from 'ant-design-vue'
-import { normalizeWindowsPath } from '@/utils/path'
+import { ref,nextTick } from "vue";
+import { message } from "ant-design-vue";
+import { normalizeWindowsPath } from "@/utils/path";
 
-const inputValue = ref('')
-const outputValue = ref('')
+const inputValue = ref("");
+const outputValue = ref("");
+const inputRef = ref<HTMLTextAreaElement | null>(null); // 1. 定义 ref
 
 function convertInput(): string | null {
   if (!inputValue.value.trim()) {
-    message.warning('请输入路径')
-    return null
+    message.warning("请输入路径");
+    return null;
   }
 
-  const convertedValue = normalizeWindowsPath(inputValue.value)
-  outputValue.value = convertedValue
-  return convertedValue
+  const convertedValue = normalizeWindowsPath(inputValue.value);
+  outputValue.value = convertedValue;
+  return convertedValue;
 }
 
 function handleConvert(): void {
-  convertInput()
+  convertInput();
 }
 
 function handleClear(): void {
-  inputValue.value = ''
-  outputValue.value = ''
+  inputValue.value = "";
+  outputValue.value = "";
+  inputRef.value?.focus();
 }
 
 async function handleConvertAndCopy(): Promise<void> {
-  const convertedValue = convertInput()
+  const convertedValue = convertInput();
 
   if (!convertedValue) {
-    return
+    return;
   }
 
-  await handleCopy(convertedValue)
+  await handleCopy(convertedValue);
 }
 
 async function handleCopy(value = outputValue.value): Promise<void> {
   if (!value) {
-    return
+    return;
   }
 
   try {
-    await navigator.clipboard.writeText(value)
-    message.success('复制成功')
+    await navigator.clipboard.writeText(value);
+    message.success("复制成功");
   } catch {
-    message.error('复制失败，请手动复制')
+    message.error("复制失败，请手动复制");
   }
 }
+defineExpose({
+  focus: () => {
+    // 使用 nextTick 确保 DOM 更新后再聚焦（虽然通常直接调用也可以，但更稳健）
+    nextTick(() => {
+      inputRef.value?.focus();
+    });
+  },
+});
 </script>
 
 <style scoped>

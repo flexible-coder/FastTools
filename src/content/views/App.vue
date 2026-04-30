@@ -20,41 +20,31 @@
     </button>
 
     <Transition name="fast-tools-panel-slide">
-      <section
-        v-if="isPanelOpen"
-        class="fast-tools-panel"
-        aria-label="FastTools 工具面板"
-      >
-        <button
-          class="fast-tools-panel__close"
-          type="button"
-          aria-label="关闭 FastTools"
-          @click="closePanel"
-        >
-          ×
-        </button>
-        <PathConverter />
+      <section v-if="isPanelOpen" class="fast-tools-panel" aria-label="FastTools 工具面板">
+        <button class="fast-tools-panel__close" type="button" aria-label="关闭 FastTools" @click="closePanel">×</button>
+        <PathConverter ref="pathConverterRef" />
       </section>
     </Transition>
   </div>
 </template>
 
 <script setup lang="ts">
-import {  onMounted, onUnmounted, ref } from 'vue'
-import PathConverter from '@/components/PathConverter.vue'
+import { onMounted, onUnmounted, ref,watch,nextTick } from "vue";
+import PathConverter from "@/components/PathConverter.vue";
 
-const isPanelOpen = ref(false)
+const isPanelOpen = ref(false);
+const pathConverterRef = ref<InstanceType<typeof PathConverter> | null>(null)
 
 function togglePanel(): void {
-  isPanelOpen.value = !isPanelOpen.value
+  isPanelOpen.value = !isPanelOpen.value;
 }
 
 function closePanel(): void {
-  isPanelOpen.value = false
+  isPanelOpen.value = false;
 }
 interface FastToolsMessage {
-  action?: string
-  type?: string
+  action?: string;
+  type?: string;
 }
 
 // 定义处理消息的函数
@@ -63,24 +53,46 @@ const handleMessage = (
   sender: chrome.runtime.MessageSender,
   sendResponse: (response?: unknown) => void,
 ) => {
-  console.log('[FastTools] received message:', message, sender)
+  console.log("[FastTools] received message:", message, sender);
 
-  if (message.action === 'toggle_panel' || message.type === 'open_panel') {
-    togglePanel()
+  if (message.action === "toggle_panel" || message.type === "open_panel") {
+    togglePanel();
     // 可选：发送响应给 background
-    sendResponse({ status: 'toggled', isOpen: isPanelOpen.value })
+    sendResponse({ status: "toggled", isOpen: isPanelOpen.value });
   }
-}
+};
 
+function handleKeydown(event: KeyboardEvent): void {
+  const isTogglePanelCommand =
+    (event.ctrlKey || event.metaKey) && event.shiftKey && !event.altKey && event.code === "KeyZ";
+
+  if (!isTogglePanelCommand || event.isComposing) {
+    return;
+  }
+
+  event.preventDefault();
+  event.stopPropagation();
+  togglePanel();
+}
+watch(isPanelOpen, (newVal) => {
+  if (newVal) {
+    // 面板打开时，等待 DOM 更新后聚焦
+    nextTick(() => {
+      pathConverterRef.value?.focus()
+    })
+  }
+})
 onMounted(() => {
   // 添加监听器
-  chrome.runtime.onMessage.addListener(handleMessage)
-})
+  chrome.runtime.onMessage.addListener(handleMessage);
+  window.addEventListener("keydown", handleKeydown, true);
+});
 
 onUnmounted(() => {
   // 移除监听器，防止内存泄漏（虽然 content script 通常随页面销毁，但好习惯很重要）
-  chrome.runtime.onMessage.removeListener(handleMessage)
-})
+  chrome.runtime.onMessage.removeListener(handleMessage);
+  window.removeEventListener("keydown", handleKeydown, true);
+});
 </script>
 
 <style scoped>
