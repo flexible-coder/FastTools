@@ -22,18 +22,26 @@
     <Transition name="fast-tools-panel-slide">
       <section v-if="isPanelOpen" class="fast-tools-panel" aria-label="FastTools 工具面板">
         <button class="fast-tools-panel__close" type="button" aria-label="关闭 FastTools" @click="closePanel">×</button>
-        <PathConverter ref="pathConverterRef" />
+        <PathConverter v-if="selectedToolKey === 'path-converter'" ref="pathConverterRef" />
       </section>
     </Transition>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref,watch,nextTick } from "vue";
+import { onMounted, onUnmounted, ref, watch, nextTick } from "vue";
 import PathConverter from "@/components/PathConverter.vue";
+import {
+  DEFAULT_TOOL_KEY,
+  SELECTED_TOOL_STORAGE_KEY,
+  getSelectedToolKey,
+  isToolKey,
+  type ToolKey,
+} from "@/utils/tools";
 
 const isPanelOpen = ref(false);
-const pathConverterRef = ref<InstanceType<typeof PathConverter> | null>(null)
+const selectedToolKey = ref<ToolKey>(DEFAULT_TOOL_KEY);
+const pathConverterRef = ref<InstanceType<typeof PathConverter> | null>(null);
 
 function togglePanel(): void {
   isPanelOpen.value = !isPanelOpen.value;
@@ -66,31 +74,74 @@ function handleKeydown(event: KeyboardEvent): void {
   const isTogglePanelCommand =
     (event.ctrlKey || event.metaKey) && event.shiftKey && !event.altKey && event.code === "KeyZ";
 
-  if (!isTogglePanelCommand || event.isComposing) {
+  if (isTogglePanelCommand && !event.isComposing) {
+    event.preventDefault();
+    event.stopPropagation();
+    togglePanel();
+    return;
+  }
+  if (event.key === "Escape" && isPanelOpen.value) {
+    event.preventDefault();
+    event.stopPropagation();
+    closePanel();
+  }
+}
+async function syncSelectedTool(): Promise<void> {
+  selectedToolKey.value = await getSelectedToolKey();
+}
+
+function focusSelectedTool(): void {
+  if (selectedToolKey.value === "path-converter") {
+    pathConverterRef.value?.focus();
+  }
+}
+
+function handleStorageChange(
+  changes: Record<string, chrome.storage.StorageChange>,
+  areaName: chrome.storage.AreaName,
+): void {
+  if (areaName !== "local") {
     return;
   }
 
-  event.preventDefault();
-  event.stopPropagation();
-  togglePanel();
-}
-watch(isPanelOpen, (newVal) => {
-  if (newVal) {
-    // 面板打开时，等待 DOM 更新后聚焦
-    nextTick(() => {
-      pathConverterRef.value?.focus()
-    })
+  const changedToolKey = changes[SELECTED_TOOL_STORAGE_KEY]?.newValue;
+
+  if (!isToolKey(changedToolKey)) {
+    return;
   }
-})
+
+  selectedToolKey.value = changedToolKey;
+
+  if (isPanelOpen.value) {
+    nextTick(() => {
+      focusSelectedTool();
+    });
+  }
+}
+
+watch(isPanelOpen, async (newVal) => {
+  if (newVal) {
+    await syncSelectedTool();
+    await nextTick();
+    focusSelectedTool();
+  }
+});
 onMounted(() => {
+  syncSelectedTool();
   // 添加监听器
   chrome.runtime.onMessage.addListener(handleMessage);
+  if (typeof chrome !== "undefined") {
+    chrome.storage?.onChanged?.addListener(handleStorageChange);
+  }
   window.addEventListener("keydown", handleKeydown, true);
 });
 
 onUnmounted(() => {
   // 移除监听器，防止内存泄漏（虽然 content script 通常随页面销毁，但好习惯很重要）
   chrome.runtime.onMessage.removeListener(handleMessage);
+  if (typeof chrome !== "undefined") {
+    chrome.storage?.onChanged?.removeListener(handleStorageChange);
+  }
   window.removeEventListener("keydown", handleKeydown, true);
 });
 </script>
