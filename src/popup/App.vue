@@ -14,13 +14,16 @@
                 </header>
 
                 <div class="fast-tools-popup__grid">
-                  <button
+                  <div
                     v-for="tool in FAST_TOOLS"
                     :key="tool.key"
                     class="fast-tools-tool-card"
                     :class="{ 'fast-tools-tool-card--selected': selectedToolKey === tool.key }"
-                    type="button"
-                    @click="openTool(tool.key)"
+                    role="button"
+                    tabindex="0"
+                    @click="selectTool(tool.key)"
+                    @keydown.enter.prevent="selectTool(tool.key)"
+                    @keydown.space.prevent="selectTool(tool.key)"
                   >
                     <span class="fast-tools-tool-card__icon" aria-hidden="true">{{ tool.icon }}</span>
                     <span class="fast-tools-tool-card__content">
@@ -30,7 +33,8 @@
                       </span>
                       <span class="fast-tools-tool-card__description">{{ tool.description }}</span>
                     </span>
-                  </button>
+                    <n-button size="small" class="fast-tools-tool-card__edit" quaternary  type="info" @click.stop="editTool(tool.key)"> 编辑 </n-button>
+                  </div>
                 </div>
               </section>
 
@@ -42,6 +46,7 @@
                   返回
                 </n-button>
                 <PathConverter v-if="activeToolKey === 'path-converter'" ref="pathConverterRef" />
+                <VueImportConverter v-if="activeToolKey === 'vue-import-converter'" ref="vueImportConverterRef" />
               </section>
             </main>
           </n-message-provider>
@@ -55,6 +60,7 @@
 import { nextTick, onMounted, onUnmounted, ref } from "vue";
 import type { GlobalThemeOverrides } from "naive-ui";
 import PathConverter from "@/components/PathConverter.vue";
+import VueImportConverter from "@/components/VueImportConverter.vue";
 import {
   DEFAULT_TOOL_KEY,
   FAST_TOOLS,
@@ -68,6 +74,7 @@ import {
 const selectedToolKey = ref<ToolKey>(DEFAULT_TOOL_KEY);
 const activeToolKey = ref<ToolKey | null>(null);
 const pathConverterRef = ref<InstanceType<typeof PathConverter> | null>(null);
+const vueImportConverterRef = ref<InstanceType<typeof VueImportConverter> | null>(null);
 const themeOverrides: GlobalThemeOverrides = {
   common: {
     primaryColor: "#1677ff",
@@ -77,10 +84,14 @@ const themeOverrides: GlobalThemeOverrides = {
   },
 };
 
-async function openTool(toolKey: ToolKey): Promise<void> {
+async function selectTool(toolKey: ToolKey): Promise<void> {
   selectedToolKey.value = toolKey;
-  activeToolKey.value = toolKey;
   await setSelectedToolKey(toolKey);
+}
+
+async function editTool(toolKey: ToolKey): Promise<void> {
+  await selectTool(toolKey);
+  activeToolKey.value = toolKey;
   await nextTick();
   focusActiveTool();
 }
@@ -92,6 +103,11 @@ function backToToolList(): void {
 function focusActiveTool(): void {
   if (activeToolKey.value === "path-converter") {
     pathConverterRef.value?.focus();
+    return;
+  }
+
+  if (activeToolKey.value === "vue-import-converter") {
+    vueImportConverterRef.value?.focus();
   }
 }
 
@@ -173,11 +189,12 @@ onUnmounted(() => {
 }
 
 .fast-tools-tool-card {
+  position: relative;
   display: flex;
   align-items: flex-start;
   width: 100%;
   min-height: 108px;
-  padding: 16px;
+  padding: 16px 16px 44px;
   text-align: left;
   cursor: pointer;
   background: #ffffff;
@@ -194,6 +211,11 @@ onUnmounted(() => {
   border-color: #9fc7ff;
   box-shadow: 0 16px 34px rgb(20 36 48 / 14%);
   transform: translateY(-1px);
+}
+
+.fast-tools-tool-card:focus-visible {
+  outline: 2px solid #1677ff;
+  outline-offset: 2px;
 }
 
 .fast-tools-tool-card--selected {
@@ -254,6 +276,12 @@ onUnmounted(() => {
   line-height: 1.55;
 }
 
+.fast-tools-tool-card__edit {
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+}
+
 .fast-tools-popup__back {
   margin-bottom: 12px;
   color: #40525f;
@@ -265,5 +293,4 @@ onUnmounted(() => {
   line-height: 1;
   transform: translateY(-1px);
 }
-
 </style>

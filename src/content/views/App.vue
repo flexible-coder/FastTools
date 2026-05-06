@@ -30,6 +30,10 @@
                     ×
                   </button>
                   <PathConverter v-if="selectedToolKey === 'path-converter'" ref="pathConverterRef" />
+                  <VueImportConverter
+                    v-if="selectedToolKey === 'vue-import-converter'"
+                    ref="vueImportConverterRef"
+                  />
                 </section>
               </Transition>
             </div>
@@ -44,6 +48,7 @@
 import { onMounted, onUnmounted, ref, watch, nextTick } from "vue";
 import type { GlobalThemeOverrides } from "naive-ui";
 import PathConverter from "@/components/PathConverter.vue";
+import VueImportConverter from "@/components/VueImportConverter.vue";
 import {
   DEFAULT_TOOL_KEY,
   SELECTED_TOOL_STORAGE_KEY,
@@ -55,6 +60,7 @@ import {
 const isPanelOpen = ref(false);
 const selectedToolKey = ref<ToolKey>(DEFAULT_TOOL_KEY);
 const pathConverterRef = ref<InstanceType<typeof PathConverter> | null>(null);
+const vueImportConverterRef = ref<InstanceType<typeof VueImportConverter> | null>(null);
 const themeOverrides: GlobalThemeOverrides = {
   common: {
     primaryColor: "#1677ff",
@@ -114,6 +120,11 @@ async function syncSelectedTool(): Promise<void> {
 function focusSelectedTool(): void {
   if (selectedToolKey.value === "path-converter") {
     pathConverterRef.value?.focus();
+    return;
+  }
+
+  if (selectedToolKey.value === "vue-import-converter") {
+    vueImportConverterRef.value?.focus();
   }
 }
 
