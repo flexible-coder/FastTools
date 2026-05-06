@@ -5,8 +5,57 @@
         <n-notification-provider>
           <n-message-provider to="#app" placement="top">
             <main class="fast-tools-sidepanel">
-              <PathConverter v-if="selectedToolKey === 'path-converter'" ref="pathConverterRef" />
-              <VueImportConverter v-if="selectedToolKey === 'vue-import-converter'" ref="vueImportConverterRef" />
+              <section v-if="!activeToolKey" class="fast-tools-sidepanel__home" aria-label="FastTools 工具列表">
+                <header class="fast-tools-sidepanel__header">
+                  <div>
+                    <h1 class="fast-tools-sidepanel__title">FastTools</h1>
+                    <p class="fast-tools-sidepanel__subtitle">选择一个工具开始使用</p>
+                  </div>
+                </header>
+
+                <div class="fast-tools-sidepanel__grid">
+                  <div
+                    v-for="tool in FAST_TOOLS"
+                    :key="tool.key"
+                    class="fast-tools-tool-card"
+                    :class="{ 'fast-tools-tool-card--selected': selectedToolKey === tool.key }"
+                    role="button"
+                    tabindex="0"
+                    @click="selectTool(tool.key)"
+                    @keydown.enter.prevent="selectTool(tool.key)"
+                    @keydown.space.prevent="selectTool(tool.key)"
+                  >
+                    <span class="fast-tools-tool-card__icon" aria-hidden="true">{{ tool.icon }}</span>
+                    <span class="fast-tools-tool-card__content">
+                      <span class="fast-tools-tool-card__head">
+                        <span class="fast-tools-tool-card__title">{{ tool.title }}</span>
+                        <span v-if="selectedToolKey === tool.key" class="fast-tools-tool-card__status">当前选中</span>
+                      </span>
+                      <span class="fast-tools-tool-card__description">{{ tool.description }}</span>
+                    </span>
+                    <n-button
+                      class="fast-tools-tool-card__edit"
+                      size="small"
+                      quaternary
+                      type="info"
+                      @click.stop="editTool(tool.key)"
+                    >
+                      编辑
+                    </n-button>
+                  </div>
+                </div>
+              </section>
+
+              <section v-else class="fast-tools-sidepanel__tool" aria-label="FastTools 工具操作页">
+                <n-button class="fast-tools-sidepanel__back" size="small" quaternary @click="backToToolList">
+                  <template #icon>
+                    <span class="fast-tools-sidepanel__back-icon" aria-hidden="true">‹</span>
+                  </template>
+                  返回
+                </n-button>
+                <PathConverter v-if="activeToolKey === 'path-converter'" ref="pathConverterRef" />
+                <VueImportConverter v-if="activeToolKey === 'vue-import-converter'" ref="vueImportConverterRef" />
+              </section>
             </main>
           </n-message-provider>
         </n-notification-provider>
@@ -16,19 +65,22 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { nextTick, onMounted, onUnmounted, ref } from 'vue'
 import type { GlobalThemeOverrides } from 'naive-ui'
 import PathConverter from '@/components/PathConverter.vue'
 import VueImportConverter from '@/components/VueImportConverter.vue'
 import {
   DEFAULT_TOOL_KEY,
+  FAST_TOOLS,
   SELECTED_TOOL_STORAGE_KEY,
   getSelectedToolKey,
   isToolKey,
+  setSelectedToolKey,
   type ToolKey,
 } from '@/utils/tools'
 
 const selectedToolKey = ref<ToolKey>(DEFAULT_TOOL_KEY)
+const activeToolKey = ref<ToolKey | null>(null)
 const pathConverterRef = ref<InstanceType<typeof PathConverter> | null>(null)
 const vueImportConverterRef = ref<InstanceType<typeof VueImportConverter> | null>(null)
 
@@ -41,17 +93,29 @@ const themeOverrides: GlobalThemeOverrides = {
   },
 }
 
-async function syncSelectedTool(): Promise<void> {
-  selectedToolKey.value = await getSelectedToolKey()
+async function selectTool(toolKey: ToolKey): Promise<void> {
+  selectedToolKey.value = toolKey
+  await setSelectedToolKey(toolKey)
 }
 
-function focusSelectedTool(): void {
-  if (selectedToolKey.value === 'path-converter') {
+async function editTool(toolKey: ToolKey): Promise<void> {
+  await selectTool(toolKey)
+  activeToolKey.value = toolKey
+  await nextTick()
+  focusActiveTool()
+}
+
+function backToToolList(): void {
+  activeToolKey.value = null
+}
+
+function focusActiveTool(): void {
+  if (activeToolKey.value === 'path-converter') {
     pathConverterRef.value?.focus()
     return
   }
 
-  if (selectedToolKey.value === 'vue-import-converter') {
+  if (activeToolKey.value === 'vue-import-converter') {
     vueImportConverterRef.value?.focus()
   }
 }
@@ -66,23 +130,13 @@ function handleStorageChange(
 
   const changedToolKey = changes[SELECTED_TOOL_STORAGE_KEY]?.newValue
 
-  if (!isToolKey(changedToolKey)) {
-    return
+  if (isToolKey(changedToolKey)) {
+    selectedToolKey.value = changedToolKey
   }
-
-  selectedToolKey.value = changedToolKey
 }
 
-watch(selectedToolKey, async () => {
-  await nextTick()
-  focusSelectedTool()
-})
-
 onMounted(async () => {
-  await syncSelectedTool()
-  await nextTick()
-  focusSelectedTool()
-
+  selectedToolKey.value = await getSelectedToolKey()
   if (typeof chrome !== 'undefined') {
     chrome.storage?.onChanged?.addListener(handleStorageChange)
   }
@@ -102,5 +156,150 @@ onUnmounted(() => {
   min-height: 100vh;
   padding: 16px;
   background: linear-gradient(180deg, #eef7fb 0%, #ffffff 100%);
+}
+
+.fast-tools-sidepanel,
+.fast-tools-sidepanel * {
+  box-sizing: border-box;
+}
+
+.fast-tools-sidepanel__home,
+.fast-tools-sidepanel__tool {
+  width: 100%;
+}
+
+.fast-tools-sidepanel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.fast-tools-sidepanel__title {
+  margin: 0;
+  color: #17212b;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.fast-tools-sidepanel__subtitle {
+  margin: 5px 0 0;
+  color: #5a6b76;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.fast-tools-sidepanel__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.fast-tools-tool-card {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  min-height: 108px;
+  padding: 16px 16px 44px;
+  text-align: left;
+  cursor: pointer;
+  background: #ffffff;
+  border: 1px solid #dbe4ea;
+  border-radius: 8px;
+  box-shadow: 0 12px 28px rgb(20 36 48 / 10%);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.fast-tools-tool-card:hover {
+  border-color: #9fc7ff;
+  box-shadow: 0 16px 34px rgb(20 36 48 / 14%);
+  transform: translateY(-1px);
+}
+
+.fast-tools-tool-card:focus-visible {
+  outline: 2px solid #1677ff;
+  outline-offset: 2px;
+}
+
+.fast-tools-tool-card--selected {
+  border-color: #1677ff;
+  box-shadow: 0 16px 34px rgb(22 119 255 / 18%);
+}
+
+.fast-tools-tool-card__icon {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  margin-right: 12px;
+  font-size: 22px;
+  background: #edf7ff;
+  border-radius: 8px;
+}
+
+.fast-tools-tool-card__content {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.fast-tools-tool-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+}
+
+.fast-tools-tool-card__title {
+  color: #17212b;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.fast-tools-tool-card__status {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  color: #1677ff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 18px;
+  background: #eaf4ff;
+  border-radius: 999px;
+}
+
+.fast-tools-tool-card__description {
+  margin-top: 8px;
+  color: #4b5d6a;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.fast-tools-tool-card__edit {
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+}
+
+.fast-tools-sidepanel__back {
+  margin-bottom: 12px;
+  color: #40525f;
+}
+
+.fast-tools-sidepanel__back-icon {
+  display: inline-block;
+  font-size: 20px;
+  line-height: 1;
+  transform: translateY(-1px);
 }
 </style>
