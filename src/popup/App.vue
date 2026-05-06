@@ -1,46 +1,60 @@
 <template>
-  <main class="fast-tools-popup">
-    <section v-if="!activeToolKey" class="fast-tools-popup__home" aria-label="FastTools 工具列表">
-      <header class="fast-tools-popup__header">
-        <div>
-          <h1 class="fast-tools-popup__title">FastTools</h1>
-          <p class="fast-tools-popup__subtitle">选择一个工具开始使用</p>
-        </div>
-      </header>
+  <n-config-provider :theme-overrides="themeOverrides">
+    <n-loading-bar-provider>
+      <n-dialog-provider>
+        <n-notification-provider>
+          <n-message-provider to="#app" placement="top">
+            <main class="fast-tools-popup">
+              <section v-if="!activeToolKey" class="fast-tools-popup__home" aria-label="FastTools 工具列表">
+                <header class="fast-tools-popup__header">
+                  <div>
+                    <h1 class="fast-tools-popup__title">FastTools</h1>
+                    <p class="fast-tools-popup__subtitle">选择一个工具开始使用</p>
+                  </div>
+                </header>
 
-      <div class="fast-tools-popup__grid">
-        <button
-          v-for="tool in FAST_TOOLS"
-          :key="tool.key"
-          class="fast-tools-tool-card"
-          :class="{ 'fast-tools-tool-card--selected': selectedToolKey === tool.key }"
-          type="button"
-          @click="openTool(tool.key)"
-        >
-          <span class="fast-tools-tool-card__icon" aria-hidden="true">{{ tool.icon }}</span>
-          <span class="fast-tools-tool-card__content">
-            <span class="fast-tools-tool-card__head">
-              <span class="fast-tools-tool-card__title">{{ tool.title }}</span>
-              <span v-if="selectedToolKey === tool.key" class="fast-tools-tool-card__status">当前选中</span>
-            </span>
-            <span class="fast-tools-tool-card__description">{{ tool.description }}</span>
-          </span>
-        </button>
-      </div>
-    </section>
+                <div class="fast-tools-popup__grid">
+                  <button
+                    v-for="tool in FAST_TOOLS"
+                    :key="tool.key"
+                    class="fast-tools-tool-card"
+                    :class="{ 'fast-tools-tool-card--selected': selectedToolKey === tool.key }"
+                    type="button"
+                    @click="openTool(tool.key)"
+                  >
+                    <span class="fast-tools-tool-card__icon" aria-hidden="true">{{ tool.icon }}</span>
+                    <span class="fast-tools-tool-card__content">
+                      <span class="fast-tools-tool-card__head">
+                        <span class="fast-tools-tool-card__title">{{ tool.title }}</span>
+                        <span v-if="selectedToolKey === tool.key" class="fast-tools-tool-card__status">当前选中</span>
+                      </span>
+                      <span class="fast-tools-tool-card__description">{{ tool.description }}</span>
+                    </span>
+                  </button>
+                </div>
+              </section>
 
-    <section v-else class="fast-tools-popup__tool" aria-label="FastTools 工具操作页">
-      <a-button  :icon="h(LeftOutlined)" style="margin-bottom: 15px;" @click="backToToolList">返回</a-button>
-      <PathConverter v-if="activeToolKey === 'path-converter'" ref="pathConverterRef" />
-    </section>
-  </main>
+              <section v-else class="fast-tools-popup__tool" aria-label="FastTools 工具操作页">
+                <n-button class="fast-tools-popup__back" size="small" quaternary @click="backToToolList">
+                  <template #icon>
+                    <span class="fast-tools-popup__back-icon" aria-hidden="true">‹</span>
+                  </template>
+                  返回
+                </n-button>
+                <PathConverter v-if="activeToolKey === 'path-converter'" ref="pathConverterRef" />
+              </section>
+            </main>
+          </n-message-provider>
+        </n-notification-provider>
+      </n-dialog-provider>
+    </n-loading-bar-provider>
+  </n-config-provider>
 </template>
 
 <script setup lang="ts">
 import { nextTick, onMounted, onUnmounted, ref } from "vue";
+import type { GlobalThemeOverrides } from "naive-ui";
 import PathConverter from "@/components/PathConverter.vue";
-import { LeftOutlined } from '@ant-design/icons-vue';
-import { h } from 'vue';
 import {
   DEFAULT_TOOL_KEY,
   FAST_TOOLS,
@@ -54,6 +68,14 @@ import {
 const selectedToolKey = ref<ToolKey>(DEFAULT_TOOL_KEY);
 const activeToolKey = ref<ToolKey | null>(null);
 const pathConverterRef = ref<InstanceType<typeof PathConverter> | null>(null);
+const themeOverrides: GlobalThemeOverrides = {
+  common: {
+    primaryColor: "#1677ff",
+    primaryColorHover: "#4096ff",
+    primaryColorPressed: "#0958d9",
+    borderRadius: "8px",
+  },
+};
 
 async function openTool(toolKey: ToolKey): Promise<void> {
   selectedToolKey.value = toolKey;
@@ -230,6 +252,18 @@ onUnmounted(() => {
   color: #4b5d6a;
   font-size: 13px;
   line-height: 1.55;
+}
+
+.fast-tools-popup__back {
+  margin-bottom: 12px;
+  color: #40525f;
+}
+
+.fast-tools-popup__back-icon {
+  display: inline-block;
+  font-size: 20px;
+  line-height: 1;
+  transform: translateY(-1px);
 }
 
 </style>

@@ -1,49 +1,52 @@
 <template>
-  <a-card class="fast-tools-path-converter" :bordered="false" size="small">
+  <n-card class="fast-tools-path-converter" :bordered="false" size="small">
     <template #title>
       <div class="fast-tools-path-converter__title">Windows 路径转换工具</div>
     </template>
 
-    <a-space class="fast-tools-path-converter__body" direction="vertical" :size="12">
-      <a-textarea
+    <n-space class="fast-tools-path-converter__body" vertical :size="12">
+      <n-input
         ref="inputRef"
         v-model:value="inputValue"
+        type="textarea"
         class="fast-tools-path-converter__textarea"
         placeholder="请输入 Windows 路径，例如：src\content\views\App.vue"
-        :auto-size="{ minRows: 2, maxRows: 8 }"
+        :autosize="{ minRows: 2, maxRows: 8 }"
         autofocus
         @keydown.enter.exact.prevent="handleConvertAndCopy"
       />
 
-      <a-space wrap>
-        <a-button type="primary" @click="handleConvert"> 转换 </a-button>
-        <a-button @click="handleClear"> 清空 </a-button>
-      </a-space>
+      <n-space wrap :size="8">
+        <n-button type="primary" @click="handleConvert">转换</n-button>
+        <n-button @click="handleClear">清空</n-button>
+      </n-space>
 
       <div class="fast-tools-path-converter__output-head">
         <span>转换结果</span>
-        <a-button type="primary" ghost size="small" :disabled="!outputValue" @click="handleCopy()"> 复制 </a-button>
+        <n-button type="primary" secondary size="small" :disabled="!outputValue" @click="handleCopy()">复制</n-button>
       </div>
 
-      <a-textarea
+      <n-input
         v-model:value="outputValue"
+        type="textarea"
         class="fast-tools-path-converter__textarea fast-tools-path-converter__textarea--output"
         readonly
         placeholder="转换后的路径会显示在这里"
-        :auto-size="{ minRows: 2, maxRows: 8 }"
+        :autosize="{ minRows: 2, maxRows: 8 }"
       />
-    </a-space>
-  </a-card>
+    </n-space>
+  </n-card>
 </template>
 
 <script setup lang="ts">
-import { ref,nextTick } from "vue";
-import { message } from "ant-design-vue";
+import { ref, nextTick } from "vue";
+import { useMessage } from "naive-ui";
 import { normalizeWindowsPath } from "@/utils/path";
 
 const inputValue = ref("");
 const outputValue = ref("");
-const inputRef = ref<HTMLTextAreaElement | null>(null); // 1. 定义 ref
+const inputRef = ref<{ focus: () => void } | null>(null);
+const message = useMessage();
 
 function convertInput(): string | null {
   if (!inputValue.value.trim()) {
@@ -102,10 +105,11 @@ defineExpose({
 .fast-tools-path-converter {
   width: 100%;
   color: #1b2328;
+  overflow: hidden;
   background: #ffffff;
   border: 1px solid #dbe4ea;
   border-radius: 8px;
-  box-shadow: 0 16px 36px rgb(20 36 48 / 12%);
+  box-shadow: 0 12px 30px rgb(20 36 48 / 10%);
 }
 
 .fast-tools-path-converter__title {
@@ -124,10 +128,16 @@ defineExpose({
   font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
   font-size: 13px;
   line-height: 1.55;
+}
+
+.fast-tools-path-converter__textarea :deep(textarea) {
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.55;
   resize: vertical;
 }
 
-.fast-tools-path-converter__textarea--output {
+.fast-tools-path-converter__textarea--output :deep(.n-input-wrapper) {
   background: #f7fafc;
 }
 
@@ -142,17 +152,17 @@ defineExpose({
   font-weight: 600;
 }
 
-:deep(.ant-card-head) {
+:deep(.n-card-header) {
   min-height: 42px;
   padding: 0 16px;
-  border-bottom-color: #e5edf2;
+  border-bottom: 1px solid #e5edf2;
 }
 
-:deep(.ant-card-body) {
+:deep(.n-card__content) {
   padding: 14px 16px 16px;
 }
 
-:deep(.ant-btn) {
+:deep(.n-button) {
   border-radius: 6px;
 }
 </style>

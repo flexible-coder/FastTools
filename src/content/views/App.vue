@@ -1,35 +1,48 @@
 <template>
-  <div class="fast-tools-content">
-    <button
-      class="fast-tools-sprite"
-      type="button"
-      :aria-expanded="isPanelOpen"
-      aria-label="打开 FastTools 工具面板"
-      @click="togglePanel"
-    >
-      <span class="fast-tools-sprite__halo" aria-hidden="true"></span>
-      <span class="fast-tools-sprite__bot" aria-hidden="true">
-        <span class="fast-tools-sprite__antenna"></span>
-        <span class="fast-tools-sprite__screen">
-          <span class="fast-tools-sprite__eye"></span>
-          <span class="fast-tools-sprite__eye"></span>
-          <span class="fast-tools-sprite__mouth"></span>
-        </span>
-      </span>
-      <span class="fast-tools-sprite__shadow" aria-hidden="true"></span>
-    </button>
+  <n-config-provider :theme-overrides="themeOverrides">
+    <n-loading-bar-provider>
+      <n-dialog-provider>
+        <n-notification-provider>
+          <n-message-provider to="#fast-tools-app" placement="top">
+            <div class="fast-tools-content">
+              <button
+                class="fast-tools-sprite"
+                type="button"
+                :aria-expanded="isPanelOpen"
+                aria-label="打开 FastTools 工具面板"
+                @click="togglePanel"
+              >
+                <span class="fast-tools-sprite__halo" aria-hidden="true"></span>
+                <span class="fast-tools-sprite__bot" aria-hidden="true">
+                  <span class="fast-tools-sprite__antenna"></span>
+                  <span class="fast-tools-sprite__screen">
+                    <span class="fast-tools-sprite__eye"></span>
+                    <span class="fast-tools-sprite__eye"></span>
+                    <span class="fast-tools-sprite__mouth"></span>
+                  </span>
+                </span>
+                <span class="fast-tools-sprite__shadow" aria-hidden="true"></span>
+              </button>
 
-    <Transition name="fast-tools-panel-slide">
-      <section v-if="isPanelOpen" class="fast-tools-panel" aria-label="FastTools 工具面板">
-        <button class="fast-tools-panel__close" type="button" aria-label="关闭 FastTools" @click="closePanel">×</button>
-        <PathConverter v-if="selectedToolKey === 'path-converter'" ref="pathConverterRef" />
-      </section>
-    </Transition>
-  </div>
+              <Transition name="fast-tools-panel-slide">
+                <section v-if="isPanelOpen" class="fast-tools-panel" aria-label="FastTools 工具面板">
+                  <button class="fast-tools-panel__close" type="button" aria-label="关闭 FastTools" @click="closePanel">
+                    ×
+                  </button>
+                  <PathConverter v-if="selectedToolKey === 'path-converter'" ref="pathConverterRef" />
+                </section>
+              </Transition>
+            </div>
+          </n-message-provider>
+        </n-notification-provider>
+      </n-dialog-provider>
+    </n-loading-bar-provider>
+  </n-config-provider>
 </template>
 
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch, nextTick } from "vue";
+import type { GlobalThemeOverrides } from "naive-ui";
 import PathConverter from "@/components/PathConverter.vue";
 import {
   DEFAULT_TOOL_KEY,
@@ -42,6 +55,14 @@ import {
 const isPanelOpen = ref(false);
 const selectedToolKey = ref<ToolKey>(DEFAULT_TOOL_KEY);
 const pathConverterRef = ref<InstanceType<typeof PathConverter> | null>(null);
+const themeOverrides: GlobalThemeOverrides = {
+  common: {
+    primaryColor: "#1677ff",
+    primaryColorHover: "#4096ff",
+    primaryColorPressed: "#0958d9",
+    borderRadius: "8px",
+  },
+};
 
 function togglePanel(): void {
   isPanelOpen.value = !isPanelOpen.value;
