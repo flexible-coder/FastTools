@@ -12,13 +12,13 @@ export const FAST_TOOLS: FastTool[] = [
     key: "path-converter",
     title: "路径转换",
     description: "将 Windows 反斜杠路径转换为通用斜杠路径",
-    icon: "🔁",
+    icon: "/",
   },
   {
     key: "vue-import-converter",
     title: "Vue Import 转换",
     description: "将 Vue 文件路径转换为 import 语句",
-    icon: "🧩",
+    icon: "V",
   },
 ];
 

@@ -5,48 +5,91 @@
         <n-notification-provider>
           <n-message-provider to="#app" placement="top">
             <main class="fast-tools-popup">
-              <section v-if="!activeToolKey" class="fast-tools-popup__home" aria-label="FastTools 工具列表">
+              <section class="fast-tools-popup__shell" aria-label="FastTools">
                 <header class="fast-tools-popup__header">
-                  <div>
-                    <h1 class="fast-tools-popup__title">FastTools</h1>
-                    <p class="fast-tools-popup__subtitle">选择一个工具开始使用</p>
+                  <div class="fast-tools-popup__title-wrap">
+                    <div class="fast-tools-popup__icon" aria-hidden="true">
+                      {{ activeToolKey === "vue-import-converter" ? "V" : "/" }}
+                    </div>
+                    <div>
+                      <h1 class="fast-tools-popup__title">
+                        {{ activeTool?.title ?? "FastTools" }}
+                      </h1>
+                      <p class="fast-tools-popup__subtitle">
+                        {{ activeTool?.description ?? "选择一个常用工具，快速处理路径和代码片段" }}
+                      </p>
+                    </div>
                   </div>
+
+                  <n-button
+                    v-if="activeToolKey"
+                    class="fast-tools-popup__back"
+                    size="small"
+                    quaternary
+                    @click="backToToolList"
+                  >
+                    返回
+                  </n-button>
                 </header>
 
-                <div class="fast-tools-popup__grid">
-                  <div
-                    v-for="tool in FAST_TOOLS"
-                    :key="tool.key"
-                    class="fast-tools-tool-card"
-                    :class="{ 'fast-tools-tool-card--selected': selectedToolKey === tool.key }"
-                    role="button"
-                    tabindex="0"
-                    @click="selectTool(tool.key)"
-                    @keydown.enter.prevent="selectTool(tool.key)"
-                    @keydown.space.prevent="selectTool(tool.key)"
+                <div class="fast-tools-popup__body">
+                  <section
+                    v-if="!activeToolKey"
+                    class="fast-tools-popup__home"
+                    aria-label="FastTools 工具列表"
                   >
-                    <span class="fast-tools-tool-card__icon" aria-hidden="true">{{ tool.icon }}</span>
-                    <span class="fast-tools-tool-card__content">
-                      <span class="fast-tools-tool-card__head">
-                        <span class="fast-tools-tool-card__title">{{ tool.title }}</span>
-                        <span v-if="selectedToolKey === tool.key" class="fast-tools-tool-card__status">当前选中</span>
-                      </span>
-                      <span class="fast-tools-tool-card__description">{{ tool.description }}</span>
-                    </span>
-                    <n-button size="small" class="fast-tools-tool-card__edit" quaternary  type="info" @click.stop="editTool(tool.key)"> 编辑 </n-button>
-                  </div>
-                </div>
-              </section>
+                    <div class="fast-tools-popup__grid">
+                      <article
+                        v-for="tool in FAST_TOOLS"
+                        :key="tool.key"
+                        class="fast-tools-tool-card"
+                        :class="{ 'fast-tools-tool-card--selected': selectedToolKey === tool.key }"
+                        role="button"
+                        tabindex="0"
+                        @click="selectTool(tool.key)"
+                        @keydown.enter.prevent="selectTool(tool.key)"
+                        @keydown.space.prevent="selectTool(tool.key)"
+                      >
+                        <span class="fast-tools-tool-card__icon" aria-hidden="true">
+                          {{ tool.icon }}
+                        </span>
+                        <span class="fast-tools-tool-card__content">
+                          <span class="fast-tools-tool-card__head">
+                            <span class="fast-tools-tool-card__title">{{ tool.title }}</span>
+                            <span
+                              v-if="selectedToolKey === tool.key"
+                              class="fast-tools-tool-card__status"
+                            >
+                              当前使用
+                            </span>
+                          </span>
+                          <span class="fast-tools-tool-card__description">
+                            {{ tool.description }}
+                          </span>
+                        </span>
+                        <n-button
+                          class="fast-tools-tool-card__open"
+                          size="small"
+                          type="primary"
+                          @click.stop="openTool(tool.key)"
+                        >
+                          打开
+                        </n-button>
+                      </article>
+                    </div>
+                  </section>
 
-              <section v-else class="fast-tools-popup__tool" aria-label="FastTools 工具操作页">
-                <n-button class="fast-tools-popup__back" size="small" quaternary @click="backToToolList">
-                  <template #icon>
-                    <span class="fast-tools-popup__back-icon" aria-hidden="true">‹</span>
-                  </template>
-                  返回
-                </n-button>
-                <PathConverter v-if="activeToolKey === 'path-converter'" ref="pathConverterRef" />
-                <VueImportConverter v-if="activeToolKey === 'vue-import-converter'" ref="vueImportConverterRef" />
+                  <section v-else class="fast-tools-popup__tool" aria-label="FastTools 工具操作页">
+                    <PathConverter
+                      v-if="activeToolKey === 'path-converter'"
+                      ref="pathConverterRef"
+                    />
+                    <VueImportConverter
+                      v-if="activeToolKey === 'vue-import-converter'"
+                      ref="vueImportConverterRef"
+                    />
+                  </section>
+                </div>
               </section>
             </main>
           </n-message-provider>
@@ -57,7 +100,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onMounted, onUnmounted, ref } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
 import type { GlobalThemeOverrides } from "naive-ui";
 import PathConverter from "@/components/PathConverter.vue";
 import VueImportConverter from "@/components/VueImportConverter.vue";
@@ -75,12 +118,13 @@ const selectedToolKey = ref<ToolKey>(DEFAULT_TOOL_KEY);
 const activeToolKey = ref<ToolKey | null>(null);
 const pathConverterRef = ref<InstanceType<typeof PathConverter> | null>(null);
 const vueImportConverterRef = ref<InstanceType<typeof VueImportConverter> | null>(null);
+const activeTool = computed(() => FAST_TOOLS.find((tool) => tool.key === activeToolKey.value));
 const themeOverrides: GlobalThemeOverrides = {
   common: {
     primaryColor: "#1677ff",
     primaryColorHover: "#4096ff",
     primaryColorPressed: "#0958d9",
-    borderRadius: "8px",
+    borderRadius: "10px",
   },
 };
 
@@ -89,7 +133,7 @@ async function selectTool(toolKey: ToolKey): Promise<void> {
   await setSelectedToolKey(toolKey);
 }
 
-async function editTool(toolKey: ToolKey): Promise<void> {
+async function openTool(toolKey: ToolKey): Promise<void> {
   await selectTool(toolKey);
   activeToolKey.value = toolKey;
   await nextTick();
@@ -145,8 +189,11 @@ onUnmounted(() => {
   box-sizing: border-box;
   width: 100%;
   min-height: 100vh;
-  padding: 16px;
-  background: linear-gradient(180deg, #eef7fb 0%, #f8fbfd 100%);
+  padding: 18px;
+  color: #1f2937;
+  background:
+    radial-gradient(circle at 14% 8%, rgb(22 119 255 / 12%), transparent 32%),
+    linear-gradient(135deg, #eef4ff 0%, #f8fbff 100%);
 }
 
 .fast-tools-popup,
@@ -154,38 +201,84 @@ onUnmounted(() => {
   box-sizing: border-box;
 }
 
-.fast-tools-popup__home,
-.fast-tools-popup__tool {
+.fast-tools-popup__shell {
   width: 100%;
+  min-height: calc(100vh - 36px);
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid #eef2f7;
+  border-radius: 18px;
+  box-shadow: 0 24px 80px rgb(15 23 42 / 18%);
+  animation: fast-tools-popup-in 0.24s ease;
 }
 
 .fast-tools-popup__header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 14px;
+  padding: 20px 22px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.fast-tools-popup__title-wrap {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 12px;
+}
+
+.fast-tools-popup__icon {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  background: linear-gradient(135deg, #1677ff, #69b1ff);
+  border-radius: 14px;
+  box-shadow: 0 12px 22px rgb(22 119 255 / 24%);
 }
 
 .fast-tools-popup__title {
   margin: 0;
-  color: #17212b;
-  font-size: 22px;
+  color: #111827;
+  font-size: 20px;
   font-weight: 800;
   line-height: 1.25;
 }
 
 .fast-tools-popup__subtitle {
-  margin: 5px 0 0;
-  color: #5a6b76;
+  margin: 4px 0 0;
+  color: #64748b;
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1.45;
+}
+
+.fast-tools-popup__back {
+  flex: 0 0 auto;
+  color: #64748b;
+  background: #f8fafc;
+  border-radius: 10px;
+}
+
+.fast-tools-popup__body {
+  padding: 22px;
+}
+
+.fast-tools-popup__home,
+.fast-tools-popup__tool {
+  width: 100%;
 }
 
 .fast-tools-popup__grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 12px;
+  gap: 14px;
 }
 
 .fast-tools-tool-card {
@@ -193,23 +286,24 @@ onUnmounted(() => {
   display: flex;
   align-items: flex-start;
   width: 100%;
-  min-height: 108px;
-  padding: 16px 16px 44px;
+  min-height: 116px;
+  padding: 16px 16px 54px;
   text-align: left;
   cursor: pointer;
-  background: #ffffff;
-  border: 1px solid #dbe4ea;
-  border-radius: 8px;
-  box-shadow: 0 12px 28px rgb(20 36 48 / 10%);
+  background: #fbfdff;
+  border: 1px solid #dbe3ef;
+  border-radius: 14px;
   transition:
-    border-color 0.18s ease,
-    box-shadow 0.18s ease,
-    transform 0.18s ease;
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    background 0.2s ease;
 }
 
 .fast-tools-tool-card:hover {
-  border-color: #9fc7ff;
-  box-shadow: 0 16px 34px rgb(20 36 48 / 14%);
+  background: #ffffff;
+  border-color: #9cc7ff;
+  box-shadow: 0 16px 34px rgb(15 23 42 / 12%);
   transform: translateY(-1px);
 }
 
@@ -219,8 +313,9 @@ onUnmounted(() => {
 }
 
 .fast-tools-tool-card--selected {
+  background: #ffffff;
   border-color: #1677ff;
-  box-shadow: 0 16px 34px rgb(22 119 255 / 18%);
+  box-shadow: 0 14px 30px rgb(22 119 255 / 16%);
 }
 
 .fast-tools-tool-card__icon {
@@ -231,9 +326,11 @@ onUnmounted(() => {
   width: 42px;
   height: 42px;
   margin-right: 12px;
-  font-size: 22px;
-  background: #edf7ff;
-  border-radius: 8px;
+  color: #1677ff;
+  font-size: 18px;
+  font-weight: 800;
+  background: #edf5ff;
+  border-radius: 14px;
 }
 
 .fast-tools-tool-card__content {
@@ -252,8 +349,8 @@ onUnmounted(() => {
 }
 
 .fast-tools-tool-card__title {
-  color: #17212b;
-  font-size: 16px;
+  color: #1f2937;
+  font-size: 15px;
   font-weight: 700;
   line-height: 1.45;
 }
@@ -271,26 +368,29 @@ onUnmounted(() => {
 
 .fast-tools-tool-card__description {
   margin-top: 8px;
-  color: #4b5d6a;
+  color: #64748b;
   font-size: 13px;
   line-height: 1.55;
 }
 
-.fast-tools-tool-card__edit {
+.fast-tools-tool-card__open {
   position: absolute;
-  right: 14px;
-  bottom: 12px;
+  right: 16px;
+  bottom: 14px;
+  min-width: 72px;
+  border-radius: 10px;
+  box-shadow: 0 8px 18px rgb(22 119 255 / 22%);
 }
 
-.fast-tools-popup__back {
-  margin-bottom: 12px;
-  color: #40525f;
-}
+@keyframes fast-tools-popup-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
 
-.fast-tools-popup__back-icon {
-  display: inline-block;
-  font-size: 20px;
-  line-height: 1;
-  transform: translateY(-1px);
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 </style>

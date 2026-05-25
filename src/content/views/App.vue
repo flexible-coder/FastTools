@@ -8,9 +8,13 @@
               <button
                 class="fast-tools-sprite"
                 type="button"
+                :style="spriteStyle"
+                :data-edge="dockedEdge"
+                :data-dragging="isDragging ? 'true' : undefined"
                 :aria-expanded="isPanelOpen"
                 aria-label="打开 FastTools 工具面板"
-                @click="togglePanel"
+                @pointerdown="handleSpritePointerDown"
+                @click="handleSpriteClick"
               >
                 <span class="fast-tools-sprite__halo" aria-hidden="true"></span>
                 <span class="fast-tools-sprite__bot" aria-hidden="true">
@@ -45,7 +49,8 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch, nextTick } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import type { CSSProperties } from "vue";
 import type { GlobalThemeOverrides } from "naive-ui";
 import PathConverter from "@/components/PathConverter.vue";
 import VueImportConverter from "@/components/VueImportConverter.vue";
@@ -57,10 +62,27 @@ import {
   type ToolKey,
 } from "@/utils/tools";
 
+type DockedEdge = "left" | "right" | "top" | "bottom";
+
+const SPRITE_WIDTH = 62;
+const SPRITE_HEIGHT = 70;
+const DRAG_CLICK_THRESHOLD = 6;
+
 const isPanelOpen = ref(false);
 const selectedToolKey = ref<ToolKey>(DEFAULT_TOOL_KEY);
 const pathConverterRef = ref<InstanceType<typeof PathConverter> | null>(null);
 const vueImportConverterRef = ref<InstanceType<typeof VueImportConverter> | null>(null);
+const dockedEdge = ref<DockedEdge>("right");
+const isDragging = ref(false);
+const spriteX = ref(0);
+const spriteY = ref(0);
+
+let pointerOffsetX = 0;
+let pointerOffsetY = 0;
+let dragStartX = 0;
+let dragStartY = 0;
+let activePointerId: number | null = null;
+let shouldSuppressClick = false;
 const themeOverrides: GlobalThemeOverrides = {
   common: {
     primaryColor: "#1677ff",
@@ -70,6 +92,22 @@ const themeOverrides: GlobalThemeOverrides = {
   },
 };
 
+const spriteStyle = computed<CSSProperties>(() => ({
+  left: `${spriteX.value}px`,
+  top: `${spriteY.value}px`,
+}));
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+function getViewportSize(): { width: number; height: number } {
+  return {
+    width: window.innerWidth || document.documentElement.clientWidth,
+    height: window.innerHeight || document.documentElement.clientHeight,
+  };
+}
+
 function togglePanel(): void {
   isPanelOpen.value = !isPanelOpen.value;
 }
@@ -77,11 +115,133 @@ function togglePanel(): void {
 function closePanel(): void {
   isPanelOpen.value = false;
 }
+
+function initializeSpritePosition(): void {
+  const viewport = getViewportSize();
+
+  spriteX.value = Math.max(0, viewport.width - SPRITE_WIDTH);
+  spriteY.value = clamp((viewport.height - SPRITE_HEIGHT) / 2, 0, Math.max(0, viewport.height - SPRITE_HEIGHT));
+  dockedEdge.value = "right";
+}
+
+function dockSpriteToEdge(edge: DockedEdge): void {
+  const viewport = getViewportSize();
+  const maxX = Math.max(0, viewport.width - SPRITE_WIDTH);
+  const maxY = Math.max(0, viewport.height - SPRITE_HEIGHT);
+
+  dockedEdge.value = edge;
+
+  if (edge === "left") {
+    spriteX.value = 0;
+    spriteY.value = clamp(spriteY.value, 0, maxY);
+    return;
+  }
+
+  if (edge === "right") {
+    spriteX.value = maxX;
+    spriteY.value = clamp(spriteY.value, 0, maxY);
+    return;
+  }
+
+  if (edge === "top") {
+    spriteX.value = clamp(spriteX.value, 0, maxX);
+    spriteY.value = 0;
+    return;
+  }
+
+  spriteX.value = clamp(spriteX.value, 0, maxX);
+  spriteY.value = maxY;
+}
+
+function dockSpriteToNearestEdge(): void {
+  const viewport = getViewportSize();
+  const centerX = spriteX.value + SPRITE_WIDTH / 2;
+  const centerY = spriteY.value + SPRITE_HEIGHT / 2;
+  const distances: Record<DockedEdge, number> = {
+    left: centerX,
+    right: viewport.width - centerX,
+    top: centerY,
+    bottom: viewport.height - centerY,
+  };
+  const nearestEdge = (Object.keys(distances) as DockedEdge[]).reduce((nearest, edge) => (
+    distances[edge] < distances[nearest] ? edge : nearest
+  ), "right");
+
+  dockSpriteToEdge(nearestEdge);
+}
+
+function handleSpritePointerDown(event: PointerEvent): void {
+  if (event.button !== 0) {
+    return;
+  }
+
+  activePointerId = event.pointerId;
+  isDragging.value = true;
+  shouldSuppressClick = false;
+  dragStartX = event.clientX;
+  dragStartY = event.clientY;
+  pointerOffsetX = event.clientX - spriteX.value;
+  pointerOffsetY = event.clientY - spriteY.value;
+
+  (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+  window.addEventListener("pointermove", handleSpritePointerMove);
+  window.addEventListener("pointerup", handleSpritePointerUp);
+  window.addEventListener("pointercancel", handleSpritePointerUp);
+}
+
+function handleSpritePointerMove(event: PointerEvent): void {
+  if (!isDragging.value || event.pointerId !== activePointerId) {
+    return;
+  }
+
+  const viewport = getViewportSize();
+  const maxX = Math.max(0, viewport.width - SPRITE_WIDTH);
+  const maxY = Math.max(0, viewport.height - SPRITE_HEIGHT);
+  const deltaX = event.clientX - dragStartX;
+  const deltaY = event.clientY - dragStartY;
+
+  if (Math.hypot(deltaX, deltaY) > DRAG_CLICK_THRESHOLD) {
+    shouldSuppressClick = true;
+  }
+
+  spriteX.value = clamp(event.clientX - pointerOffsetX, 0, maxX);
+  spriteY.value = clamp(event.clientY - pointerOffsetY, 0, maxY);
+}
+
+function handleSpritePointerUp(event: PointerEvent): void {
+  if (event.pointerId !== activePointerId) {
+    return;
+  }
+
+  isDragging.value = false;
+  activePointerId = null;
+  window.removeEventListener("pointermove", handleSpritePointerMove);
+  window.removeEventListener("pointerup", handleSpritePointerUp);
+  window.removeEventListener("pointercancel", handleSpritePointerUp);
+  dockSpriteToNearestEdge();
+}
+
+function handleSpriteClick(event: MouseEvent): void {
+  if (shouldSuppressClick) {
+    event.preventDefault();
+    event.stopPropagation();
+    shouldSuppressClick = false;
+    return;
+  }
+
+  togglePanel();
+}
+
+function handleResize(): void {
+  dockSpriteToEdge(dockedEdge.value);
+}
+
 interface FastToolsMessage {
   action?: string;
   type?: string;
 }
 
+/*
 // 定义处理消息的函数
 const handleMessage = (
   message: FastToolsMessage,
@@ -93,6 +253,20 @@ const handleMessage = (
   if (message.action === "toggle_panel" || message.type === "open_panel") {
     togglePanel();
     // 可选：发送响应给 background
+    sendResponse({ status: "toggled", isOpen: isPanelOpen.value });
+  }
+};
+*/
+
+const handleMessage = (
+  message: FastToolsMessage,
+  sender: chrome.runtime.MessageSender,
+  sendResponse: (response?: unknown) => void,
+): void => {
+  console.log("[FastTools] received message:", message, sender);
+
+  if (message.action === "toggle_panel" || message.type === "open_panel") {
+    togglePanel();
     sendResponse({ status: "toggled", isOpen: isPanelOpen.value });
   }
 };
@@ -159,13 +333,16 @@ watch(isPanelOpen, async (newVal) => {
   }
 });
 onMounted(() => {
+  initializeSpritePosition();
   syncSelectedTool();
   // 添加监听器
   chrome.runtime.onMessage.addListener(handleMessage);
   if (typeof chrome !== "undefined") {
     chrome.storage?.onChanged?.addListener(handleStorageChange);
   }
+  chrome.runtime.onMessage.addListener(handleMessage);
   window.addEventListener("keydown", handleKeydown, true);
+  window.addEventListener("resize", handleResize);
 });
 
 onUnmounted(() => {
@@ -175,6 +352,10 @@ onUnmounted(() => {
     chrome.storage?.onChanged?.removeListener(handleStorageChange);
   }
   window.removeEventListener("keydown", handleKeydown, true);
+  window.removeEventListener("resize", handleResize);
+  window.removeEventListener("pointermove", handleSpritePointerMove);
+  window.removeEventListener("pointerup", handleSpritePointerUp);
+  window.removeEventListener("pointercancel", handleSpritePointerUp);
 });
 </script>
 
@@ -186,8 +367,6 @@ onUnmounted(() => {
 
 .fast-tools-sprite {
   position: fixed;
-  top: 50%;
-  right: 0;
   z-index: 2147483646;
   display: flex;
   align-items: center;
@@ -195,24 +374,68 @@ onUnmounted(() => {
   width: 62px;
   height: 70px;
   padding: 0;
-  cursor: pointer;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
   background: linear-gradient(160deg, #ffffff 0%, #dff0ff 100%);
   border: 0;
   border-radius: 24px 0 0 24px;
   box-shadow: 0 14px 32px rgb(18 47 88 / 26%);
-  transform: translateY(-50%);
   transition:
+    top 0.22s ease,
+    left 0.22s ease,
+    transform 0.22s ease,
     box-shadow 0.18s ease,
     background 0.18s ease;
+  will-change: top, left, transform;
 }
 
 .fast-tools-sprite:hover {
   background: linear-gradient(160deg, #ffffff 0%, #cfe7ff 100%);
   box-shadow: 0 18px 38px rgb(18 47 88 / 34%);
+  transform: translate(0, 0);
+}
+
+.fast-tools-sprite[data-dragging="true"] {
+  cursor: grabbing;
+  transition: none;
+  transform: translate(0, 0);
+}
+
+.fast-tools-sprite[data-edge="left"] {
+  border-radius: 0 24px 24px 0;
+}
+
+.fast-tools-sprite[data-edge="right"] {
+  border-radius: 24px 0 0 24px;
+}
+
+.fast-tools-sprite[data-edge="top"] {
+  border-radius: 0 0 24px 24px;
+}
+
+.fast-tools-sprite[data-edge="bottom"] {
+  border-radius: 24px 24px 0 0;
+}
+
+.fast-tools-sprite[data-edge="left"]:not(:hover):not([data-dragging="true"]) {
+  transform: translateX(-50%);
+}
+
+.fast-tools-sprite[data-edge="right"]:not(:hover):not([data-dragging="true"]) {
+  transform: translateX(50%);
+}
+
+.fast-tools-sprite[data-edge="top"]:not(:hover):not([data-dragging="true"]) {
+  transform: translateY(-50%);
+}
+
+.fast-tools-sprite[data-edge="bottom"]:not(:hover):not([data-dragging="true"]) {
+  transform: translateY(50%);
 }
 
 .fast-tools-sprite:active {
-  transform: translateY(-50%) scale(0.98);
+  transform: scale(0.98);
 }
 
 .fast-tools-sprite__halo {
@@ -320,11 +543,11 @@ onUnmounted(() => {
 .fast-tools-panel {
   position: fixed;
   top: 50%;
-  right: 66px;
+  left: 50%;
   z-index: 2147483645;
-  width: 360px;
-  max-width: calc(100vw - 86px);
-  transform: translateY(-50%);
+  width: 520px;
+  max-width: calc(100vw - 48px);
+  transform: translate(-50%, -50%);
   filter: drop-shadow(0 18px 44px rgb(15 38 55 / 22%));
 }
 
@@ -367,13 +590,13 @@ onUnmounted(() => {
 .fast-tools-panel-slide-leave-to {
   opacity: 0;
   filter: drop-shadow(0 8px 20px rgb(15 38 55 / 10%));
-  transform: translateY(-50%) translateX(18px) scale(0.98);
+  transform: translate(-50%, -50%) scale(0.96);
 }
 
 .fast-tools-panel-slide-enter-to,
 .fast-tools-panel-slide-leave-from {
   opacity: 1;
-  transform: translateY(-50%) translateX(0) scale(1);
+  transform: translate(-50%, -50%) scale(1);
 }
 
 @keyframes fast-tools-sprite-bob {
